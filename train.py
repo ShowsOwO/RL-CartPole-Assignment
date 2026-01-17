@@ -7,10 +7,10 @@ import numpy as np
 import random
 import matplotlib.pyplot as plt
 import os
-import time  # 引入 time 库用于控制演示速度
+import time
 
 
-# --- 1. 定义 Q 网络 (保持不变) ---
+# --- 1. 定义 Q 网络  ---
 class QNetwork(nn.Module):
     def __init__(self, state_dim, action_dim):
         super(QNetwork, self).__init__()
@@ -24,7 +24,7 @@ class QNetwork(nn.Module):
         return self.fc3(x)
 
 
-# --- 2. 定义 DQN 智能体 (保持不变) ---
+# --- 2. 定义 DQN 智能体  ---
 class DQNAgent:
     def __init__(self, state_dim, action_dim):
         self.state_dim = state_dim
@@ -38,10 +38,8 @@ class DQNAgent:
         self.memory_size = 10000
         self.memory = []
 
-        # 尝试使用 GPU，如果之前配置失败会自动回退到 CPU
+
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        # 如果是 Mac M1/M2/M3，取消下面这行的注释
-        # if torch.backends.mps.is_available(): self.device = torch.device("mps")
         print(f"Agent using device: {self.device}")
 
         self.q_net = QNetwork(state_dim, action_dim).to(self.device)
@@ -91,7 +89,7 @@ class DQNAgent:
         self.target_net.load_state_dict(self.q_net.state_dict())
 
 
-# --- 3. 辅助函数 (保持不变) ---
+# --- 3. 辅助函数  ---
 def plot_and_save_results(scores, filename='training_curve.png'):
     plt.figure(figsize=(10, 5))
     plt.plot(scores, label='Score per Episode')
@@ -104,15 +102,14 @@ def plot_and_save_results(scores, filename='training_curve.png'):
     print(f"图表已保存至: {filename}")
 
 
-# --- 4. 主训练循环 (训练时不要开渲染，太慢) ---
+# --- 4. 主训练循环  ---
 def train(model_path='dqn_cartpole_model.pth'):
-    # 这里 render_mode 默认为 None，速度最快
     env = gym.make('CartPole-v1')
     agent = DQNAgent(state_dim=4, action_dim=2)
     episodes = 250
     scores = []
 
-    print("--- 开始训练 (无渲染模式) ---")
+    print("--- 开始训练 ---")
     for e in range(episodes):
         state, _ = env.reset()
         score = 0
@@ -135,45 +132,42 @@ def train(model_path='dqn_cartpole_model.pth'):
 
     env.close()
     plot_and_save_results(scores)
-    # 保存训练好的模型权重
+    # 保存模型权重
     torch.save(agent.q_net.state_dict(), model_path)
     print(f"模型权重已保存至: {model_path}")
 
 
-# --- 5. 【新增】可视化测试函数 ---
+# --- 5. 可视化测试函数 ---
 def test(model_path='dqn_cartpole_model.pth'):
     print("--- 开始可视化演示 ---")
-    # 关键点：这里指定 render_mode="human" 会弹出窗口
     env = gym.make('CartPole-v1', render_mode="human")
 
     agent = DQNAgent(state_dim=4, action_dim=2)
 
     # 加载之前训练好保存的权重
     if os.path.exists(model_path):
-        # 注意 map_location，确保在CPU机器上也能加载GPU训练出来的模型
         agent.q_net.load_state_dict(torch.load(model_path, map_location=agent.device))
         print("成功加载模型权重！")
     else:
         print("警告：未找到模型文件，将使用未经训练的随机 Agent 演示。")
 
-    # 关键点：测试时，把 epsilon 设为 0，让 AI 完全根据学到的经验行动，不再随机探索
+    # 测试时让 AI 完全根据学到的经验行动，不再随机探索
     agent.epsilon = 0.0
 
-    # 运行几个回合看看效果
+    # 运行
     for i in range(3):  # 演示 3 轮
         state, _ = env.reset()
         done = False
         score = 0
         while not done:
-            # 这里会自动渲染画面
             action = agent.act(state)
             state, reward, terminated, truncated, _ = env.step(action)
             done = terminated or truncated
             score += 1
-            # time.sleep(0.02) # 如果觉得演示速度太快，可以取消注释加一点延迟
+            time.sleep(0.02) # 延迟
 
         print(f"演示回合 {i + 1} 得分: {score}")
-        time.sleep(1)  # 回合间停顿一下
+        time.sleep(1)  # 回合间停顿
 
     env.close()
 
@@ -181,12 +175,12 @@ def test(model_path='dqn_cartpole_model.pth'):
 if __name__ == "__main__":
     model_filename = 'dqn_cartpole_model.pth'
 
-    # 1. 先运行训练
+    # 运行训练
     train(model_path=model_filename)
 
-    # 2. 训练完成后，询问是否要看演示
+    # 训练完成后
     user_input = input("\n训练结束。是否要加载模型并查看可视化演示？(y/n): ")
     if user_input.lower() == 'y':
         test(model_path=model_filename)
     else:
-        print("程序结束。")
+        print("程序结束")
